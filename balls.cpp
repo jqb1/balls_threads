@@ -3,7 +3,9 @@
 #include <stdlib.h>
 #include <signal.h>
 #include <ctime>
+#include <thread>
 #include <cstdlib>
+#include <vector>
 
 enum direction{
     up,
@@ -27,7 +29,14 @@ int main()
     int row,col;
     initscr();			/* Start curses mode 		  */
     getmaxyx(stdscr,row,col);
-    move_ball(row/2,col/2,row,col);
+    std::thread t[9];
+    for(int i=0; i<10; i++){
+        t[i] = std::thread(move_ball,row/2,col/2,row,col);
+        sleep(2);
+    }
+    for(int i = 0; i<10; i++){
+        t[i].join();
+    }
     refresh();			/* Print it on to the real screen */
     getch();			/* Wait for user input */
     endwin();			/* End curses mode		  */
