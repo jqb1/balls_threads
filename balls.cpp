@@ -5,7 +5,7 @@
 #include <ctime>
 #include <thread>
 #include <cstdlib>
-#include <vector>
+#include <mutex>
 
 enum direction{
     up,
@@ -17,7 +17,7 @@ enum direction{
     down_right,
     down_left
 };
-
+std::mutex mtx;
 direction define_direction(direction);
 void move_one_step(int &row, int &col, direction ball_direction);
 void move_ball(int,int,int,int);
@@ -29,27 +29,28 @@ int main()
     int row,col;
     initscr();			/* Start curses mode 		  */
     getmaxyx(stdscr,row,col);
-    std::thread t[9];
-    for(int i=0; i<10; i++){
+    std::thread t[10];
+    for(int i=0; i<5; i++){
         t[i] = std::thread(move_ball,row/2,col/2,row,col);
         sleep(2);
     }
-    for(int i = 0; i<10; i++){
-        t[i].join();
-    }
-    refresh();			/* Print it on to the real screen */
-    getch();			/* Wait for user input */
-    endwin();			/* End curses mode		  */
+    getch();
+    endwin();
     return 0;
 }
 
 void move_ball(int row, int col, int maxy, int maxx){
     direction ball_direction = down_right;
     while(true){
+        mtx.lock();
         mvprintw(row,col,"o");        
         refresh();
+        mtx.unlock();
         usleep(80000);
+        mtx.lock();
         mvprintw(row,col," ");
+        mtx.unlock();
+
         move_one_step(row,col,ball_direction);
 
         if(row<=0 || row>=maxy){
