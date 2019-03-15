@@ -6,6 +6,8 @@
 #include <thread>
 #include <cstdlib>
 #include <mutex>
+#include <vector>
+#include <chrono>
 
 enum direction{
     up,
@@ -30,9 +32,11 @@ int main()
     initscr();			/* Start curses mode 		  */
     getmaxyx(stdscr,row,col);
     std::thread t[10];
-    for(int i=0; i<5; i++){
-        t[i] = std::thread(move_ball,row/2,col/2,row,col);
-        sleep(2);
+    while(true){    
+        std::vector<std::thread> balls_vector; 
+        balls_vector.push_back(std::thread(move_ball,row/2,col/2,row,col));
+        balls_vector.back().detach();
+        sleep(1);
     }
     getch();
     endwin();
@@ -40,13 +44,14 @@ int main()
 }
 
 void move_ball(int row, int col, int maxy, int maxx){
-    direction ball_direction = down_right;
+    int r = std::rand()%8;
+    direction ball_direction = (direction)r;
     while(true){
         mtx.lock();
         mvprintw(row,col,"o");        
         refresh();
         mtx.unlock();
-        usleep(80000);
+        std::this_thread::sleep_for(std::chrono::milliseconds(80));
         mtx.lock();
         mvprintw(row,col," ");
         mtx.unlock();
