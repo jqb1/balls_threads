@@ -19,24 +19,30 @@ enum direction{
     down_right,
     down_left
 };
+
 std::mutex mtx;
 direction define_direction(direction);
 void move_one_step(int &row, int &col, direction ball_direction);
 void move_ball(int,int,int,int);
+void wait_for_end();
+
+bool end_animation = false; 
 
 int main()
 {
-    
+ 
     std::srand(time(0));
     int row,col;
     initscr();			/* Start curses mode 		  */
+    curs_set(0);
     getmaxyx(stdscr,row,col);
-    std::thread t[10];
-    while(true){    
+    std::thread t_wait(wait_for_end);
+
+    while(!end_animation){    
         std::vector<std::thread> balls_vector; 
         balls_vector.push_back(std::thread(move_ball,row/2,col/2,row,col));
         balls_vector.back().detach();
-        sleep(1);
+        sleep(rand()%3);
     }
     getch();
     endwin();
@@ -46,12 +52,12 @@ int main()
 void move_ball(int row, int col, int maxy, int maxx){
     int r = std::rand()%8;
     direction ball_direction = (direction)r;
-    while(true){
+    while(!end_animation){
         mtx.lock();
         mvprintw(row,col,"o");        
         refresh();
         mtx.unlock();
-        std::this_thread::sleep_for(std::chrono::milliseconds(80));
+        std::this_thread::sleep_for(std::chrono::milliseconds(rand()%80));
         mtx.lock();
         mvprintw(row,col," ");
         mtx.unlock();
@@ -80,6 +86,10 @@ void move_ball(int row, int col, int maxy, int maxx){
             }
         }
     }
+}
+void wait_for_end(){
+    getch();
+    end_animation = true;
 }
 void move_one_step(int &row, int &col, direction ball_direction){
     switch(ball_direction){
