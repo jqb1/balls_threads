@@ -38,26 +38,30 @@ int main()
     getmaxyx(stdscr,row,col);
     std::thread t_wait(wait_for_end);
 
+    std::vector<std::thread> balls_vector; 
     while(!end_animation){    
-        std::vector<std::thread> balls_vector; 
         balls_vector.push_back(std::thread(move_ball,row/2,col/2,row,col));
-        balls_vector.back().detach();
         sleep(rand()%3);
     }
     getch();
+    t_wait.join();
+    for (int i=0; i<balls_vector.size(); ++i){
+        balls_vector.at(i).join();
+    }
     endwin();
     return 0;
 }
 
 void move_ball(int row, int col, int maxy, int maxx){
     int r = std::rand()%8;
+    int speed = std::rand()%80+40;
     direction ball_direction = (direction)r;
     while(!end_animation){
         mtx.lock();
         mvprintw(row,col,"o");        
         refresh();
         mtx.unlock();
-        std::this_thread::sleep_for(std::chrono::milliseconds(rand()%80));
+        std::this_thread::sleep_for(std::chrono::milliseconds(speed));
         mtx.lock();
         mvprintw(row,col," ");
         mtx.unlock();
