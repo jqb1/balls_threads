@@ -25,6 +25,8 @@ direction define_direction(direction);
 void move_one_step(int &row, int &col, direction ball_direction);
 void move_ball(int,int,int,int);
 void wait_for_end();
+void rectangle(int, int, int, int);
+void bounce(int &, int &, int, int, direction &);
 
 bool end_animation = false; 
 
@@ -33,21 +35,26 @@ int main()
  
     std::srand(time(0));
     int row,col;
-    initscr();			/* Start curses mode 		  */
+    initscr();
     curs_set(0);
     getmaxyx(stdscr,row,col);
+
     std::thread t_wait(wait_for_end);
+    std::thread draw_rectangle(rectangle,row/2,col/2,row,col); 
 
     std::vector<std::thread> balls_vector; 
     while(!end_animation){    
         balls_vector.push_back(std::thread(move_ball,row/2,col/2,row,col));
         sleep(rand()%3);
     }
-    getch();
+
     t_wait.join();
+    draw_rectangle.join();
+
     for (int i=0; i<balls_vector.size(); ++i){
         balls_vector.at(i).join();
     }
+
     endwin();
     return 0;
 }
@@ -66,8 +73,12 @@ void move_ball(int row, int col, int maxy, int maxx){
         mvprintw(row,col," ");
         mtx.unlock();
 
+        bounce(row,col,maxy,maxx,ball_direction);
         move_one_step(row,col,ball_direction);
 
+   }
+}
+void bounce(int &row,int &col, int maxy, int maxx, direction &ball_direction){
         if(row<=0 || row>=maxy){
             ball_direction = define_direction(ball_direction);
         }
@@ -89,7 +100,6 @@ void move_ball(int row, int col, int maxy, int maxx){
                 ball_direction = define_direction(ball_direction);
             }
         }
-    }
 }
 void wait_for_end(){
     getch();
@@ -121,7 +131,6 @@ void move_one_step(int &row, int &col, direction ball_direction){
         case down_left:
             row++,col--;
             break;
-
     }
 }
 
@@ -153,4 +162,22 @@ direction define_direction(direction direction){
             break;
     }
     return direction;
+}
+void rectangle(int row, int col, int maxy, int maxx)
+{   
+    direction direction = right;
+    while(!end_animation){
+        mtx.lock();
+        werase(stdscr);
+        mvhline(row, col, 0, (col+10)-col);
+        mvhline(row+10, col, 0, (col+10)-col);
+        mvvline(row, col, 0, (row+10)-row);
+        mvvline(row, col+10, 0, (row+10)-row);
+        mtx.unlock();
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+        bounce(row,col,maxy,maxx, direction);
+        move_one_step(row,col, direction);
+
+    }
 }
