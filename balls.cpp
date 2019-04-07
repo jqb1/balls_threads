@@ -45,7 +45,7 @@ int main()
     std::vector<std::thread> balls_vector; 
     while(!end_animation){    
         balls_vector.push_back(std::thread(move_ball,row/2,col/2,row,col));
-        sleep(rand()%3);
+        sleep(rand()%3+1);
     }
 
     t_wait.join();
@@ -168,13 +168,19 @@ void rectangle(int row, int col, int maxy, int maxx)
     direction direction = right;
     while(!end_animation){
         mtx.lock();
-        werase(stdscr);
-        mvhline(row, col, 0, (col+10)-col);
-        mvhline(row+10, col, 0, (col+10)-col);
-        mvvline(row, col, 0, (row+10)-row);
-        mvvline(row, col+10, 0, (row+10)-row);
+        mvhline(row, col,'.', 10);
+        mvhline(row+5, col, '.', 10);
+        mvvline(row, col, '.', 5);
+        mvvline(row, col+9, '.', 5);
         mtx.unlock();
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        mtx.lock();
+        //clean before redraw
+        mvhline(row, col,' ', 10);
+        mvhline(row+5, col, ' ', 10);
+        mvvline(row, col, ' ', 5);
+        mvvline(row, col+9, ' ', 5);
+        mtx.unlock();
 
         bounce(row,col,maxy,maxx, direction);
         move_one_step(row,col, direction);
