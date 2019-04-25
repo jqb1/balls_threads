@@ -29,9 +29,10 @@ void wait_for_end();
 void rectangle(int, int, int, int);
 void bounce(int &, int &, int, int,int, int, direction &);
 
-bool end_animation = false; 
-std::pair <int,int> rect_left_up;
-std::pair <int,int> rect_right_down;
+bool end_animation = false;
+bool stop_rectangle = false;
+int rect_left_up_x, rect_left_up_y;
+int rect_right_down_x,rect_right_down_y ;
 int main()
 {
  
@@ -42,13 +43,17 @@ int main()
     getmaxyx(stdscr,row,col);
 
     std::thread t_wait(wait_for_end);
-    sleep(1);
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
     std::thread draw_rectangle(rectangle,row/2,col/2,row,col); 
 
     std::vector<std::thread> balls_vector; 
+    int counter = 0;
     while(!end_animation){
         sleep(rand()%3+1);
-        balls_vector.push_back(std::thread(move_ball,row/2,col/2,row,col));
+        if (counter <=20){
+            balls_vector.push_back(std::thread(move_ball,row/2,col/2,row,col));
+            counter++;
+        }
     }
 
     t_wait.join();
@@ -66,29 +71,36 @@ void move_ball(int row, int col, int maxy, int maxx){
     int r = std::rand()%8;
     int speed = std::rand()%80+40;
     direction ball_direction = (direction)r;
+    ball_direction = right;
     int minx, miny = 0;
+    row+=1;
+    col+=1;
     while(!end_animation){
         mtx.lock();
-        mvprintw(row,col,"o");       
+        mvprintw(row,col,"o"); 
+        refresh();      
         mtx.unlock();
-        std::this_thread::sleep_for(std::chrono::milliseconds(speed));
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
         mtx.lock();
         mvprintw(row,col," ");
         mtx.unlock();
 
-        if(row >= rect_left_up.first && row <= rect_right_down.first && col >= rect_left_up.second  && col<=rect_left_up.second){ 
-            maxy = rect_right_down.second;
-            maxx = rect_right_down.first;
-            minx = rect_left_up.first;
-            miny = rect_left_up.second;
+        if(row > rect_left_up_y && row < rect_right_down_y && col > rect_left_up_x  && col<rect_right_down_x){ 
+            maxy = rect_right_down_y;
+            maxx = rect_right_down_x;
+            minx = rect_left_up_x;
+            miny = rect_left_up_y;
+            stop_rectangle = true;
         }
-
         bounce(row,col,minx,miny, maxy, maxx, ball_direction);
         move_one_step(row,col,ball_direction);
 
    }
 }
 void bounce(int &row,int &col,int minx, int miny, int maxy, int maxx, direction &ball_direction){
+        // mtx.lock();
+        // mvprintw(10,10,"max x:%d max y:%d",maxx, maxy);
+        // mtx.unlock();
         if(row<= miny || row>=maxy){
             ball_direction = define_direction(ball_direction);
         }
@@ -177,15 +189,17 @@ void rectangle(int row, int col, int maxy, int maxx)
 {   
     direction direction = right;
     while(!end_animation){
-        mvhline(row, col,'.', 10);
-        mvhline(row+5, col, '.', 10);
-        mvvline(row, col, '.', 5);
-        mvvline(row, col+9, '.', 5);
-        rect_left_up.first = row;
-        rect_left_up.second = col;
-        rect_right_down.first = row+5;
-        rect_right_down.second = col+9;
+        mtx.lock();
+        mvhline(row, col,'x', 10);
+        mvhline(row+5, col, 'x', 10);
+        mvvline(row, col, 'x', 5);
+        mvvline(row, col+9, 'x', 5);
+        rect_left_up_x = col;
+        rect_left_up_y = row;
+        rect_right_down_x = col+10;
+        rect_right_down_y = row+5;
         refresh();
+        mtx.unlock();
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
         mtx.lock();
         //clean before redraw
@@ -194,9 +208,9 @@ void rectangle(int row, int col, int maxy, int maxx)
         mvvline(row, col, ' ', 5);
         mvvline(row, col+9, ' ', 5);
         mtx.unlock();
-
-        bounce(row,col, 0, 0,maxy,maxx, direction);
-        move_one_step(row,col, direction);
-
+        if(!stop_rectangle){
+            bounce(row,col, 0, 0,maxy,maxx, direction);
+            move_one_step(row,col, direction);
+        }
     }
 }
