@@ -193,11 +193,11 @@ void rectangle(int row, int col, int maxy, int maxx)
         mvhline(row, col,'x', 10);
         mvhline(row+5, col, 'x', 10);
         mvvline(row, col, 'x', 5);
-        mvvline(row, col+9, 'x', 5);
+        mvvline(row, col+10, 'x', 6);
         rect_left_up_x = col;
         rect_left_up_y = row;
         rect_right_down_x = col+10;
-        rect_right_down_y = row+5;
+        rect_right_down_y = row+4;
         refresh();
         mtx.unlock();
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -206,7 +206,7 @@ void rectangle(int row, int col, int maxy, int maxx)
         mvhline(row, col,' ', 10);
         mvhline(row+5, col, ' ', 10);
         mvvline(row, col, ' ', 5);
-        mvvline(row, col+9, ' ', 5);
+        mvvline(row, col+10, ' ', 6);
         mtx.unlock();
         if(!stop_rectangle){
             bounce(row,col, 0, 0,maxy,maxx, direction);
