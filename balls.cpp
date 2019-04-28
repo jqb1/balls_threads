@@ -28,11 +28,14 @@ void move_ball(int,int,int,int);
 void wait_for_end();
 void rectangle(int, int, int, int);
 void bounce(int &, int &, int, int,int, int, direction &);
+direction define_center_direction(int row,int col,int minx, int miny, int maxy, int maxx);
 
 bool end_animation = false;
 bool stop_rectangle = false;
 int rect_left_up_x, rect_left_up_y;
-int rect_right_down_x,rect_right_down_y ;
+int rect_right_down_x,rect_right_down_y;
+direction rectangle_direction;
+std:: vector<std::pair <int,int>> balls_inside; 
 int main()
 {
  
@@ -73,6 +76,7 @@ void move_ball(int row, int col, int maxy, int maxx){
     direction ball_direction = (direction)r;
     ball_direction = right;
     int minx, miny = 0;
+    bool inside = false;
     row+=1;
     col+=1;
     while(!end_animation){
@@ -85,43 +89,73 @@ void move_ball(int row, int col, int maxy, int maxx){
         mvprintw(row,col," ");
         mtx.unlock();
 
-        if(row > rect_left_up_y && row < rect_right_down_y && col > rect_left_up_x  && col<rect_right_down_x){ 
-            maxy = rect_right_down_y;
-            maxx = rect_right_down_x;
-            minx = rect_left_up_x;
-            miny = rect_left_up_y;
+        if(row > rect_left_up_y && row < rect_right_down_y && col > rect_left_up_x  && col<rect_right_down_x && !inside ){ 
             stop_rectangle = true;
+            inside = true;  
+            // balls_inside.push_back(std::make_pair(row,col));
         }
-        bounce(row,col,minx,miny, maxy, maxx, ball_direction);
+        if (inside){
+            bounce(row,col,rect_left_up_x,rect_left_up_y, rect_right_down_y,rect_right_down_x,ball_direction);
+        }
+        else
+            bounce(row,col,0,0, maxy, maxx, ball_direction);
         move_one_step(row,col,ball_direction);
 
    }
+}
+direction define_center_direction(int row,int col,int minx, int miny, int maxy, int maxx){   
+    direction center;
+    if(row>=(maxy-miny)/2 && col>=(maxx-minx)/2)
+        center = up_left;
+    else if(row>=(maxy-miny)/2 && col<=(maxx-minx)/2)
+        center = up_right;
+    else if(row<=(maxy-miny)/2 && col<=(maxx-minx)/2)
+        center = down_right;
+    else if(row<=(maxy-miny)/2 && col>=(maxx-minx)/2)
+        center = down_left;
+    return center;
 }
 void bounce(int &row,int &col,int minx, int miny, int maxy, int maxx, direction &ball_direction){
         // mtx.lock();
         // mvprintw(10,10,"max x:%d max y:%d",maxx, maxy);
         // mtx.unlock();
-        if(row<= miny || row>=maxy){
+        if(row==miny && col==minx || row==miny && col==maxx || row==maxy && col==minx || row==maxy && col==maxx){
+            switch (ball_direction){
+                case up_left:
+                    ball_direction = down_right;
+                    break;            
+                case up_right:
+                    ball_direction = down_left;
+                    break;
+                case down_right:
+                    ball_direction = up_left;
+                    break;
+                case down_left:
+                    ball_direction = up_right;
+                    break;
+            }
+        }
+        
+        else if(row<= miny || row>=maxy){
             ball_direction = define_direction(ball_direction);
         }
-        if(col<=minx){
+        else if(col<=minx){
            int r = std::rand()%2;
            if(r == 0)
                 ball_direction = down_right;
            else
                 ball_direction = up_right;
         }
-        if(col>=maxx){
+        else if(col>=maxx){
             int r = std::rand()%2;
             if(r == 0){
                 ball_direction = down_left;
-                ball_direction = define_direction(ball_direction);
             }
             else{
                 ball_direction = up_left;
-                ball_direction = define_direction(ball_direction);
             }
         }
+        
 }
 void wait_for_end(){
     getch();
@@ -193,24 +227,29 @@ void rectangle(int row, int col, int maxy, int maxx)
         mvhline(row, col,'x', 10);
         mvhline(row+5, col, 'x', 10);
         mvvline(row, col, 'x', 5);
-        mvvline(row, col+10, 'x', 6);
+        mvvline(row, col+9, 'x', 5);
         rect_left_up_x = col;
         rect_left_up_y = row;
-        rect_right_down_x = col+10;
-        rect_right_down_y = row+4;
+        rect_right_down_x = col+9;
+        rect_right_down_y = row+5;
         refresh();
         mtx.unlock();
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));
         mtx.lock();
         //clean before redraw
         mvhline(row, col,' ', 10);
         mvhline(row+5, col, ' ', 10);
         mvvline(row, col, ' ', 5);
-        mvvline(row, col+10, ' ', 6);
+        mvvline(row, col+9, ' ', 5);
         mtx.unlock();
-        if(!stop_rectangle){
-            bounce(row,col, 0, 0,maxy,maxx, direction);
-            move_one_step(row,col, direction);
-        }
+        // if(!stop_rectangle){
+        bounce(row,col, 0, 0,maxy,maxx, direction);
+        if(direction==up_left || direction == down_left)
+            direction = left;
+        else if(direction==down_right || direction == up_right)
+            direction = right;
+        rectangle_direction = direction;
+        move_one_step(row,col, direction);
+        // }
     }
 }
