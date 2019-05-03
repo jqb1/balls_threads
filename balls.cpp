@@ -6,6 +6,7 @@
 #include <thread>
 #include <cstdlib>
 #include <mutex>
+#include <map>
 #include <vector>
 #include <chrono>
 #include <utility> 
@@ -22,20 +23,22 @@ enum direction{
 };
 
 std::mutex mtx;
-direction define_direction(direction);
 void move_one_step(int &row, int &col, direction ball_direction);
 void move_ball(int,int,int,int);
 void wait_for_end();
 void rectangle(int, int, int, int);
 void bounce(int &, int &, int, int,int, int, direction &);
-direction define_center_direction(int row,int col,int minx, int miny, int maxy, int maxx);
+void check_balls_inside_rectangle(std::pair<int,int>, std::thread::id);
+direction define_direction(direction direction);
 
 bool end_animation = false;
 bool stop_rectangle = false;
 int rect_left_up_x, rect_left_up_y;
 int rect_right_down_x,rect_right_down_y;
 direction rectangle_direction;
-std:: vector<std::pair <int,int>> balls_inside; 
+std::map<std::thread::id, std::pair<int,int>> balls_inside;
+
+
 int main()
 {
  
@@ -53,7 +56,7 @@ int main()
     int counter = 0;
     while(!end_animation){
         sleep(rand()%3+1);
-        if (counter <=20){
+        if (counter <=10){
             balls_vector.push_back(std::thread(move_ball,row/2,col/2,row,col));
             counter++;
         }
@@ -72,11 +75,10 @@ int main()
 
 void move_ball(int row, int col, int maxy, int maxx){
     int r = std::rand()%8;
-    int speed = std::rand()%80+40;
     direction ball_direction = (direction)r;
-    ball_direction = right;
     int minx, miny = 0;
     bool inside = false;
+    std::thread::id this_id = std::this_thread::get_id();
     row+=1;
     col+=1;
     while(!end_animation){
@@ -90,12 +92,13 @@ void move_ball(int row, int col, int maxy, int maxx){
         mtx.unlock();
 
         if(row > rect_left_up_y && row < rect_right_down_y && col > rect_left_up_x  && col<rect_right_down_x && !inside ){ 
-            stop_rectangle = true;
-            inside = true;  
-            // balls_inside.push_back(std::make_pair(row,col));
+            inside = true;
+            balls_inside[this_id] = std::make_pair(row,col);
         }
         if (inside){
             bounce(row,col,rect_left_up_x,rect_left_up_y, rect_right_down_y,rect_right_down_x,ball_direction);
+            balls_inside.at(this_id) = std::make_pair(row,col);
+            check_balls_inside_rectangle(std::make_pair(row,col), this_id);
         }
         else
             bounce(row,col,0,0, maxy, maxx, ball_direction);
@@ -103,22 +106,8 @@ void move_ball(int row, int col, int maxy, int maxx){
 
    }
 }
-direction define_center_direction(int row,int col,int minx, int miny, int maxy, int maxx){   
-    direction center;
-    if(row>=(maxy-miny)/2 && col>=(maxx-minx)/2)
-        center = up_left;
-    else if(row>=(maxy-miny)/2 && col<=(maxx-minx)/2)
-        center = up_right;
-    else if(row<=(maxy-miny)/2 && col<=(maxx-minx)/2)
-        center = down_right;
-    else if(row<=(maxy-miny)/2 && col>=(maxx-minx)/2)
-        center = down_left;
-    return center;
-}
+
 void bounce(int &row,int &col,int minx, int miny, int maxy, int maxx, direction &ball_direction){
-        // mtx.lock();
-        // mvprintw(10,10,"max x:%d max y:%d",maxx, maxy);
-        // mtx.unlock();
         if(row==miny && col==minx || row==miny && col==maxx || row==maxy && col==minx || row==maxy && col==maxx){
             switch (ball_direction){
                 case up_left:
@@ -135,7 +124,6 @@ void bounce(int &row,int &col,int minx, int miny, int maxy, int maxx, direction 
                     break;
             }
         }
-        
         else if(row<= miny || row>=maxy){
             ball_direction = define_direction(ball_direction);
         }
@@ -242,14 +230,23 @@ void rectangle(int row, int col, int maxy, int maxx)
         mvvline(row, col, ' ', 5);
         mvvline(row, col+9, ' ', 5);
         mtx.unlock();
-        // if(!stop_rectangle){
-        bounce(row,col, 0, 0,maxy,maxx, direction);
-        if(direction==up_left || direction == down_left)
-            direction = left;
-        else if(direction==down_right || direction == up_right)
-            direction = right;
-        rectangle_direction = direction;
-        move_one_step(row,col, direction);
-        // }
+        if(!stop_rectangle){
+            bounce(row,col, 0, 0,maxy,maxx, direction);
+            if(direction==up_left || direction == down_left)
+                direction = left;
+            else if(direction==down_right || direction == up_right)
+                direction = right;
+            rectangle_direction = direction;
+            move_one_step(row,col, direction);
+        }
     }
+}
+void check_balls_inside_rectangle(std::pair<int,int> coords, std::thread::id id){
+    std::map<std::thread::id, std::pair<int,int>>::iterator it;
+    for (it = balls_inside.begin(); it != balls_inside.end(); it++ ){
+        if (coords == it->second && it->first != id){
+            stop_rectangle = true;
+        }
+    }
+
 }
