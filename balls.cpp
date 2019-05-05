@@ -41,7 +41,6 @@ std::map<std::thread::id, std::pair<int,int>> balls_inside;
 
 int main()
 {
- 
     std::srand(time(0));
     int row,col;
     initscr();
@@ -56,7 +55,7 @@ int main()
     int counter = 0;
     while(!end_animation){
         sleep(rand()%3+1);
-        if (counter <=10){
+        if (counter <=2){
             balls_vector.push_back(std::thread(move_ball,row/2,col/2,row,col));
             counter++;
         }
@@ -76,6 +75,7 @@ int main()
 void move_ball(int row, int col, int maxy, int maxx){
     int r = std::rand()%8;
     direction ball_direction = (direction)r;
+    ball_direction = right;
     int minx, miny = 0;
     bool inside = false;
     std::thread::id this_id = std::this_thread::get_id();
@@ -98,11 +98,20 @@ void move_ball(int row, int col, int maxy, int maxx){
         if (inside){
             bounce(row,col,rect_left_up_x,rect_left_up_y, rect_right_down_y,rect_right_down_x,ball_direction);
             balls_inside.at(this_id) = std::make_pair(row,col);
+            mtx.lock();
             check_balls_inside_rectangle(std::make_pair(row,col), this_id);
+            mtx.unlock();
         }
         else
             bounce(row,col,0,0, maxy, maxx, ball_direction);
+        
+        if (!inside && stop_rectangle==true){
+            if(row >= rect_left_up_y && row <= rect_right_down_y && col >= rect_left_up_x  && col<=rect_right_down_x)
+                 stop_rectangle = false; 
+        }
         move_one_step(row,col,ball_direction);
+
+        
 
    }
 }
@@ -242,11 +251,12 @@ void rectangle(int row, int col, int maxy, int maxx)
     }
 }
 void check_balls_inside_rectangle(std::pair<int,int> coords, std::thread::id id){
-    std::map<std::thread::id, std::pair<int,int>>::iterator it;
-    for (it = balls_inside.begin(); it != balls_inside.end(); it++ ){
-        if (coords == it->second && it->first != id){
-            stop_rectangle = true;
+    if(!stop_rectangle){   
+        std::map<std::thread::id, std::pair<int,int>>::iterator it;
+        for (it = balls_inside.begin(); it != balls_inside.end(); it++ ){
+            if (coords == it->second && it->first != id){
+                stop_rectangle = true;
+            }
         }
     }
-
 }
