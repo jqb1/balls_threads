@@ -33,6 +33,7 @@ direction define_direction(direction direction);
 
 bool end_animation = false;
 bool stop_rectangle = false;
+bool restart = false;
 int rect_left_up_x, rect_left_up_y;
 int rect_right_down_x,rect_right_down_y;
 direction rectangle_direction;
@@ -55,10 +56,11 @@ int main()
     int counter = 0;
     while(!end_animation){
         sleep(rand()%3+1);
-        if (counter <=2){
+        if (counter <=20){
             balls_vector.push_back(std::thread(move_ball,row/2,col/2,row,col));
             counter++;
         }
+
     }
 
     t_wait.join();
@@ -75,13 +77,19 @@ int main()
 void move_ball(int row, int col, int maxy, int maxx){
     int r = std::rand()%8;
     direction ball_direction = (direction)r;
-    ball_direction = right;
     int minx, miny = 0;
-    bool inside = false;
+    bool ball_inside = false;
     std::thread::id this_id = std::this_thread::get_id();
     row+=1;
     col+=1;
     while(!end_animation){
+        if (restart){
+            row = maxy/2;
+            col = maxx/2;
+            ball_inside = false;
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            restart = false;
+        }
         mtx.lock();
         mvprintw(row,col,"o"); 
         refresh();      
@@ -91,28 +99,25 @@ void move_ball(int row, int col, int maxy, int maxx){
         mvprintw(row,col," ");
         mtx.unlock();
 
-        if(row > rect_left_up_y && row < rect_right_down_y && col > rect_left_up_x  && col<rect_right_down_x && !inside ){ 
-            inside = true;
+        if(row > rect_left_up_y && row < rect_right_down_y && col > rect_left_up_x  && col<rect_right_down_x && !ball_inside ){ 
+            ball_inside = true;
             balls_inside[this_id] = std::make_pair(row,col);
         }
-        if (inside){
+        if (ball_inside){
             bounce(row,col,rect_left_up_x,rect_left_up_y, rect_right_down_y,rect_right_down_x,ball_direction);
             balls_inside.at(this_id) = std::make_pair(row,col);
-            mtx.lock();
             check_balls_inside_rectangle(std::make_pair(row,col), this_id);
-            mtx.unlock();
         }
         else
             bounce(row,col,0,0, maxy, maxx, ball_direction);
         
-        if (!inside && stop_rectangle==true){
-            if(row >= rect_left_up_y && row <= rect_right_down_y && col >= rect_left_up_x  && col<=rect_right_down_x)
-                 stop_rectangle = false; 
+        if (!ball_inside && stop_rectangle==true){
+            if(row >= rect_left_up_y && row <= rect_right_down_y && col >= rect_left_up_x  && col<=rect_right_down_x){
+                stop_rectangle = false; 
+                restart = true;
+            }
         }
         move_one_step(row,col,ball_direction);
-
-        
-
    }
 }
 
